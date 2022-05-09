@@ -13,7 +13,8 @@ import re
 from random import randint
 
 from matplotlib import cm
-from scipy.stats import norm
+#from scipy.stats import norm
+import scipy.stats
 
 import urllib.request
 from urllib.error import URLError,HTTPError,ContentTooShortError
@@ -73,8 +74,11 @@ def prob_S_in_g(OP_exp, exp_error, OP_sim, op_sim_sd):
     b = OP_exp + exp_error
     #P_S = norm.cdf(b, loc=OP_sim, scale=op_sim_sd) - norm.cdf(a, loc=OP_sim, scale=op_sim_sd)
     #changing to survival function to increase precision, note scaling. Must be recoded to increase precision still
+
     #P_S = -norm.sf(b, loc=OP_sim, scale=op_sim_sd) + norm.sf(a, loc=OP_sim, scale=op_sim_sd)
-    
+    #
+    #
+    #P_S = -scipy.stats.norm.sf(b, loc=OP_sim, scale=op_sim_sd) + scipy.stats.norm.sf(a, loc=OP_sim, scale=op_sim_sd)
     P_S = -scipy.stats.t.sf(b, df=1, loc=OP_sim, scale=op_sim_sd) + scipy.stats.t.sf(a, df=1, loc=OP_sim, scale=op_sim_sd)
 
     if math.isnan(P_S) :
@@ -102,6 +106,7 @@ def getFragments(mapping_file):
     fragments = {} 
     
     for key_m, value in mapping_dict.items():
+        #print(value)
         key_f = value['FRAGMENT']
         fragments.setdefault(key_f,[]).append(key_m)
     
@@ -169,6 +174,7 @@ def fragmentQuality(fragments, exp_op_data, sim_op_data):
     #print(p_F)
     #warning, hard coded experimental error
     exp_error=0.02
+
     
 
     fragment_quality = dict.fromkeys(fragments.keys()) #empty dictionary with fragment names as keys
@@ -182,6 +188,64 @@ def fragmentQuality(fragments, exp_op_data, sim_op_data):
         except KeyError: 
             fragment_quality[fragment_key] = float("NaN")
             continue
+
+#    E_sum = 0
+#    AV_sum = 0
+#    #print(p_F)
+#    if p_F != 0:
+#        for fr in fragments:
+#            for key_exp, value_exp in exp_op_data.items():
+#            #    print(key_exp)
+#            #    print(value_exp[0][0])
+#                if (fr in key_exp) and not np.isnan(value_exp[0][0]): # != 'nan':
+#                    OP_exp = value_exp[0][0]
+#                    # print(OP_exp)
+#                    try:
+#                        OP_sim = sim_op_data[key_exp][0]
+#                    except:
+#                        continue
+#                    # print(OP_sim)
+
+#                    #print(sim_op_data[key_exp])
+#                    op_sim_STEM=sim_op_data[key_exp][2]
+                    
+#                    #change here if you want to use shitness(TM) scale for fragments. Warning big numbers will dominate
+#                    #if OP_exp != 'NaN':
+#                    QE = prob_S_in_g(OP_exp, exp_error, OP_sim, op_sim_STEM)
+#                    print(OP_exp, OP_sim ,QE)
+#                    #print(QE, 10**(-QE))
+
+#                    #if QE == float("inf"):
+#                    #    print(QE)
+
+
+#                    #if QE != 'nan': #QE > 0 and  QE != 'inf': # and  QE != 'nan'
+
+
+#                        #if QE == 'NaN':
+#                        #    E_sum = E_sum
+
+                        
+#                    #if QE == float("inf"): #'Infinity' or QE == 'inf':
+#                    #    #print('tst')
+#                    #    E_sum *= 5000
+#                    #    AV_sum += 1
+#                    #elif 10**(-QE) > 0.95 :
+#                    #    #print(QE**10)
+#                    #    E_sum *= -1*math.log(0.95,10)
+#                    #    #print(E_sum)
+#                    #    AV_sum += 1
+#                    #else:
+
+#                    E_sum += QE #prob_S_in_g(OP_exp, exp_error, OP_sim, op_sim_STEM)
+#                    AV_sum += 1
+
+#        if AV_sum > 0:
+#            E_F = (E_sum / AV_sum) * p_F # / p_F
+#            #print(E_sum)
+#            #E_F = (E_sum**(1 / AV_sum)) / p_F
+#            return E_F
+
         else:
             if p_F[fragment_key] != 0:
                 for key_exp, value_exp in exp_op_data.items():
@@ -273,6 +337,7 @@ def fragmentQualityAvg(lipid,fragment_qual_dict,fragments): # handles one lipid 
 
 def systemQuality(system_fragment_qualities): # fragments is different for each lipid ---> need to make individual dictionaries
     system_dict = {}
+    lipid_dict = {}
     w_nan = []
 
     for lipid in system_fragment_qualities.keys():
@@ -280,6 +345,7 @@ def systemQuality(system_fragment_qualities): # fragments is different for each 
         lipid_dict = dict.fromkeys(system_fragment_qualities[lipid].keys(),0) # copy keys to new dictionary
         
         w = simulation.molarFraction(lipid)
+
         for key, value in system_fragment_qualities[lipid].items():
             if not math.isnan(value):
           #  if value != float("NaN"):
@@ -303,9 +369,11 @@ def systemQuality(system_fragment_qualities): # fragments is different for each 
                 total += value
             elif key == 'headgroup':
                 headgroup += value
+            elif key == 'sn-1' or key == 'sn-2':
+                tails += value/2
             else:
-               # print(key)
-               # print(value)
+                #print(key)
+                #print(value)
                 tails += value 
     
  #   print('w_nan')            
@@ -324,6 +392,58 @@ def systemQuality(system_fragment_qualities): # fragments is different for each 
     print(system_quality)
      
     return system_quality
+
+#        if lipid != 'CHOL':    # SHOULD BE CHANGED TO WORK ALSO WITH OTHER LIPIDS WITHOUT HEAD AND TAILS THAN CHOLESTEROL
+#            for key, value in system_fragment_qualities[lipid].items():
+#                if value != 'nan':
+#                    if key == 'headgroup':
+#                        headgroup.append(w * value)
+#                    elif key == 'sn-1':
+#                        sn1.append(w * value)
+#                    elif key == 'sn-2':
+#                        sn2.append(w * value)
+#                    elif key == 'total':
+#                        total.append(w * value)
+#                    else:
+#                        continue
+#                else:
+#                    w_nan.append(1-w) # save 1 - w of a lipid into a list if the fragment quality is nan
+#        else:
+#            for key, value in system_fragment_qualities[lipid].items():
+#                 if value != 'nan':
+#                     if key == 'total':
+#                         total.append(w * value)
+#    #print(headgroup,sum(headgroup), np.prod(w_nan), w_nan)
+#    out_dict['headgroup'] = sum(headgroup) * np.prod(w_nan) # multiply all elements of w_nan and divide the sum by the product
+#    out_dict['sn-1'] = sum(sn1) * np.prod(w_nan)
+#    out_dict['sn-2'] = sum(sn2) * np.prod(w_nan)
+#    out_dict['total'] = sum(total) * np.prod(w_nan)
+
+    ## EXTREMELY DIRTY FIX FOR WORKSHOP, SHOULD BE IMPROVED LATER
+#    for lipid in system_fragment_qualities.keys():
+#        w = simulation.molarFraction(lipid)
+#        if lipid != 'CHOL':    
+#            for key, value in system_fragment_qualities[lipid].items():                        
+#                if value == 'nan':
+#                   if key == 'headgroup':
+#                       headgroup[:] = [x / (1-w) for x in headgroup]
+#                   elif key == 'sn-1':
+#                       sn1[:] = [x / (1-w) for x in sn1] 
+#                   elif key == 'sn-2':
+#                       sn2[:] = [x / (1-w) for x in sn2] 
+#                   elif key == 'total':
+#                       total[:] = [x / (1-w) for x in total]
+#                else:
+#                    continue
+
+                         
+#    out_dict['headgroup'] = sum(headgroup)
+#    out_dict['sn-1'] = sum(sn1)
+#    out_dict['sn-2'] = sum(sn2)
+#    out_dict['total'] = sum(total)
+
+#    return out_dict
+
     
  
 #Form factor quality
@@ -436,7 +556,8 @@ def formfactorQuality(simFFdata, expFFdata):
 
 def loadSimulations():
     simulations = []
-    for subdir, dirs, files in os.walk(r'../../Data/Simulations/f62/739/f627391cd6cddf82078a7a12c4cd22767535b6fe/d9c93bb0ae93ede37c230593a348691012519efc'): #
+#    for subdir, dirs, files in os.walk(r'../../Data/Simulations/f62/739/f627391cd6cddf82078a7a12c4cd22767535b6fe/d9c93bb0ae93ede37c230593a348691012519efc/'): #
+    for subdir, dirs, files in os.walk(r'../../Data/Simulations/'): #
         for filename1 in files:
             filepath = subdir + os.sep + filename1
         
@@ -508,7 +629,12 @@ for simulation in simulations:
     #save OP quality and FF quality here
     DATAdir = '../../Data/Simulations/' + str(sub_dirs[0]) + '/' + str(sub_dirs[1]) + '/' + str(sub_dirs[2]) + '/' + str(sub_dirs[3])
     print('Analyzing: ', DATAdir)
-   
+
+    #fragment_quality_output = {}
+    #system_qual_output = {}    
+
+    os.system('git rm ' + DATAdir + '/*uality.json')
+
    
     #Order Parameters 
     system_quality = {}
@@ -533,17 +659,21 @@ for simulation in simulations:
         #go through file paths in simulation.readme['EXPERIMENT']
         #print(simulation.readme['EXPERIMENT'].values())
 
+        fragment_qual_dict = {}
+
+        data_dict = {}
+        
         for doi, path in simulation.readme['EXPERIMENT']['ORDERPARAMETER'][lipid1].items():
             print('Evaluating '+ lipid1 + ' lipid using experimental data from ' + doi + ' in ../../Data/experiments/OrderParameters/' + path)
                 
             #load mapping file
             mapping_file = simulation.readme['COMPOSITION'][lipid1]['MAPPING']
             
-            data_dict = {}
+            
             
             # there can be more than one experiment for a lipid
             # save fragment qualities of each experiment to a dictionary and take average later
-            fragment_qual_dict = {}
+            #fragment_qual_dict = {}
             
             #  print('matching experiments')
             #   print(experiments.items())
@@ -576,12 +706,23 @@ for simulation in simulations:
 
             exp_error = 0.02
            
+
             for key in OP_data_lipid.keys():
                 OP_array = OP_data_lipid[key].copy()
                 try:
                     OP_exp = lipidExpOPdata[key][0][0]
                 except KeyError:
      #                   OP_array.append(float("NaN"))
+
+#                for key in OP_data_lipid.keys():
+#                    OP_array = OP_data_lipid[key].copy()
+#                    try:
+#                        #print(lipidExpOPdata)
+#                        OP_exp = lipidExpOPdata[key][0][0]
+#                    except KeyError:
+#                        #print('Key error', DATAdir, key)
+#     #                   OP_array.append('NaN')
+
      #                   OP_qual_data[key] = OP_array
                     continue
                 else:
@@ -609,15 +750,42 @@ for simulation in simulations:
     #    print("Fragment_qual_dict:")
     #    print(fragment_qual_dict) #CHECK CONTENTS
 
-           
-        fragment_quality_output = fragmentQualityAvg(lipid1,fragment_qual_dict,fragments)
+
+        try:
+            fragment_quality_output = fragmentQualityAvg(lipid1,fragment_qual_dict,fragments)
+        except:
+            print('no fragment quality')
+            fragment_quality_output = {}
+
+##            print("Fragment_qual_dict:")
+##            print(fragment_qual_dict) #CHECK CONTENTS
+            
+#            if lipid1 != 'CHOL':
+#                headgroup_avg, sn1_avg, sn2_avg, total_qual = fragmentQualityAvg(lipid1,fragment_qual_dict)
+#                fragment_quality_output['headgroup'] = headgroup_avg
+#                fragment_quality_output['sn-1'] = sn1_avg
+#                fragment_quality_output['sn-2'] = sn2_avg
+#                fragment_quality_output['total'] = total_qual
+#            else:
+#               # print("Cholesterol works")
+#                total_qual = fragmentQualityAvg(lipid1,fragment_qual_dict)
+#                fragment_quality_output['total'] = total_qual
+#                #print(total_qual)
+            
+#         #   print("fragment_quality_output")
+#         #   print(fragment_quality_output)
+
             
 
         #   print("fragment_quality_output")
         #   print(fragment_quality_output)
 
-            
-        system_quality[lipid1] = fragment_quality_output
+        try:
+            system_quality[lipid1] = fragment_quality_output
+        except:
+            print('no system quality')
+            system_quality[lipid1] = {}
+
 
         fragment_quality_file = DATAdir + '/' + lipid1 + '_FragmentQuality.json'
 
@@ -639,18 +807,24 @@ for simulation in simulations:
         outfile1 = DATAdir + '/' + lipid1 + '_OrderParameters_quality.json'               
           #  outfile1 = DATAdir + '/' + lipid1 + '_OrderParameters_quality.json'
             #doi : {'carbon hydrogen': [op_sim, sd_sim, stem_sim, op_exp, exp_error, quality] ... }
-        if(len(data_dict) > 0):
+        #if data_dict and len(data_dict) > 0:
+        try:
             with open(outfile1, 'w') as f:
                 json.dump(data_dict,f)
             f.close()
+        except:
+            pass
 
         #print('input to system quality')
         #print(system_quality)
         #calculate system quality
+    #print(system_quality)
+    #if system_quality:
     system_qual_output = systemQuality(system_quality)
         #print('system')
         #print(system_qual_output)
         #make system quality file
+
     outfile2 = DATAdir + '/SYSTEM_quality.json'
     SQout = False
     for SQ in system_qual_output:
@@ -660,6 +834,18 @@ for simulation in simulations:
         with open(outfile2, 'w') as f:
             json.dump(system_qual_output,f)
         f.close() 
+
+#        outfile2 = DATAdir + '/SYSTEM_quality.json'
+#        SQout = False
+#        for SQ in system_qual_output:
+#            #print(system_qual_output[SQ])
+#            if system_qual_output[SQ] > 0:
+#                SQout = True
+#        if SQout:
+#            with open(outfile2, 'w') as f:
+#                json.dump(system_qual_output,f)
+#            f.close() 
+
             #print('Evaluating order parameter quality of simulation data in ' + simulation.indexingPath)
         print('Order parameter quality evaluated for '  + simulation.indexingPath)
         EvaluatedOPs += 1

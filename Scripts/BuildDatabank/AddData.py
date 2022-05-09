@@ -613,6 +613,7 @@ for key_mol in all_molecules:
         with open(mapping_file,"r") as yaml_file:
            mapping_dict = yaml.load(yaml_file, Loader=yaml.FullLoader)
         yaml_file.close()
+
     if sim.get('UNITEDATOM_DICT') and not 'SOL' in key_mol:
         mapping_file_length = 0
         
@@ -621,6 +622,15 @@ for key_mol in all_molecules:
                 continue
             else:
                 mapping_file_length += 1
+
+    #if sim.get('UNITEDATOM_DICT') and not 'SOL' in key_mol:
+    #    lines = open(mapping_file).readlines(  )
+    #    mapping_file_length = 0
+    #    for line in lines:
+    #        if 'H' in line.split(" ")[0]:
+    #            continue
+    #        else:
+    #            mapping_file_length += 1
     else:
         mapping_file_length = len(mapping_dict.keys())
          
