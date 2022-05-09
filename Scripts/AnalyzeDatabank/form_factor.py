@@ -124,9 +124,12 @@ def listNamePairs(mapping_dict,molecule):
             residues.append(mapping_dict[mapping_name]['RESIDUE'])
         except KeyError:
             continue
+            
+    print(residues)
     
     if residues:
         pairs_dictionary = dict.fromkeys(residues)
+        print(pairs_dictionary.keys())
         for res in pairs_dictionary.keys():
             pairs = []
             for mapping_name in mapping_dict.keys():
@@ -135,7 +138,7 @@ def listNamePairs(mapping_dict,molecule):
             pairs_dictionary[res] = pairs
 
     else:
-        pairs_dictionary = dict.fromkeys(molecule)  
+        pairs_dictionary = dict.fromkeys([molecule])  
         pairs = []  
         for mapping_name in mapping_dict.keys():
             pairs.append([mapping_name, mapping_dict[mapping_name]['ATOMNAME']]) 
@@ -227,42 +230,24 @@ class FormFactor:
         print(molecule)
         "return list of electrons"
         electrons = []
-      #  molname = self.readme['COMPOSITION'][molecule]['NAME']
-      # residue_atoms, residue_names = listNamePairs(self.system_mapping[molecule])
+        molname = self.readme['COMPOSITION'][molecule]['NAME']
       
-        pairs_residue = listNamePairs(self.system_mapping[molecule], molecule)
-        for res in pairs_residue.keys():
-            residue_atoms = list(self.u.select_atoms("resname " + res).atoms.names) #explicit atoms of the residue
-            for atom in residue_atoms:
+        pairs_residue = listNamePairs(self.system_mapping[molname], molname)
+        
+        print(pairs_residue.keys())
+        
+        for res in pairs_residue.keys(): #KORJAA TOI res tossa explicit_atoms
+          #  print(res)
+            explicit_atoms = list(self.u.select_atoms("resname " + res).atoms.names) #explicit atoms of the residue
+            for atom in explicit_atoms:
+                #find generic mapping name matching to forcefield atom name
                 index_list = [atom in pairs for pairs in pairs_residue[res]] #find mapping name
                 atom_i1 = index_list.index(True)
-                mapping_name = pairs_residue[res][atom_i1][0] #does this work??
+                mapping_name = pairs_residue[res][atom_i1][0] 
                 e_atom_i = self.getElectrons(mapping_name) #get number of electrons in an atom i of residue
+                #print(mapping_name + " " + str(e_atom_i))
                 electrons.append(e_atom_i)
 
-#        for i,residue in enumerate(self.u.residues.resnames):
-  #          if residue != "WAT" and residue != "CHL":
-  #              print(residue)
-  
-#            if residue_names:
-#                if residue in residue_names:
-#                    for atom in self.u.residues[i].atoms.names:
-#                        index_list = [atom in pairs for pairs in residue_atoms]
-#                        atom_i1 = index_list.index(True)
-#                        mapping_name = residue_atoms[atom_i1][0]
-                            
-#                        e_atom_i = self.getElectrons(mapping_name) #get number of electrons in an atom i of residue
-#                        electrons.append(e_atom_i)
-#            else:
-#                if residue == molecule:
-#                    for atom in self.u.residues[i].atoms.names:
-#                        index_list = [atom in pairs for pairs in residue_atoms]
-#                        atom_i1 = index_list.index(True)
-#                        mapping_name = residue_atoms[atom_i1][0]
-                            
-#                        e_atom_i = self.getElectrons(mapping_name) #get number of electrons in an atom i of residue
-                     #   print(molecule + " " + str(e_atom_i))
-#                        electrons.append(e_atom_i)
     #    print(electrons)
     #    print(len(electrons))
         return electrons
@@ -278,106 +263,44 @@ class FormFactor:
             UA = True
         
         weights=[]
-#        cSOL = 0
-#        cNA = 0
         
         if UA:  #UNITED ATOM SIMULATIONS
-            for molecule in self.system_mapping.keys():
-                print(molecule)
+            for molecule1 in self.readme['COMPOSITION'].keys():
+                print(molecule1)
                 
-                if molecule in lipids_dict:
+                if molecule1 in lipids_dict:
+                    molecule2 = self.readme['COMPOSITION'][molecule1]['NAME']
                     electrons=[]
                     
-                    pairs_residue = listNamePairs(self.system_mapping[molecule], molecule)
-                    atomsH = filterHbonds(self.system_mapping[molecule].keys()) #list of hydrogen atoms
+                    pairs_residue = listNamePairs(self.system_mapping[molecule2], molecule2)
+                    atomsH = filterHbonds(self.system_mapping[molecule2].keys()) #list of hydrogen atoms
                     
                     # extract explicit atoms and get the mapping names
                     for res in pairs_residue.keys():
-                        residue_atoms = list(self.u.select_atoms("resname " + res).atoms.names) #explicit atoms of the residue
-                        for atom in residue_atoms:
+                        explicit_atoms = list(self.u.select_atoms("resname " + res).atoms.names) #explicit atoms of the residue
+                        for atom in explicit_atoms:
+                            #find generic mapping name matching to forcefield atom name
                             index_list = [atom in pairs for pairs in pairs_residue[res]] 
                             atom_i1 = index_list.index(True)
-                            mapping_name = pairs_residue[res][atom_i1][0] #does this work??
+                            mapping_name = pairs_residue[res][atom_i1][0]
                             name1 = re.sub(r'_M','',mapping_name[::1]) #remove _M from the end of mapping name
                 
                             #count how many times name1 occurs in atomsH i.e. how many H are bound to it
                             numberH = sum(1 for atomH in atomsH if name1 == re.sub(r'H[1-4]_M','',atomH[::1]))
                             number_e = self.getElectrons(mapping_name)
                             e_atom_i = number_e + numberH 
-                            print(name1 + " " + str(numberH))
+                            #print(name1 + " " + str(numberH))
                             electrons.append(e_atom_i)
                             
                     # extract explicit atoms and get the mapping names
                     weights.extend(electrons)
                 else:
-                    weights.extend(self.residueElectronsAll(molecule))    
+                    molecule2 = self.readme['COMPOSITION'][molecule1]['NAME']
+                    weights.extend(self.residueElectronsAll(molecule2))    
                     
-#                    
-                   # atomsH = filterHbonds(self.system_mapping[molecule].keys()) #list of hydrogen atoms
-                   # boundToH = self.system_mapping[molecule].keys() - atomsH #list of atoms that are not hydrogen atoms
-                   # print("length of boundToH " + str(len(boundToH)))
-                    
-                   # residue_atoms, residue_names = listNamePairs(self.system_mapping[molecule]) # RESIDUES!!!
-#                    
-#                    print(residue_names)
-                    
-#                    for i,residue in enumerate(self.u.residues.resnames):
-#                        if residue_names:
-#                            if residue in residue_names:
-#                                for atom in self.u.residues[i].atoms.names:
-#                                    index_list = [atom in pairs for pairs in residue_atoms] #is it possible for atom name to appear more than once
-#                                    atom_i1 = index_list.index(True)
-#                                    mapping_name = residue_atoms[atom_i1][0]
-#                                    if mapping_name in atomsH:
-#                                        continue
-#                                    else:    
-#                                        name1 = re.sub(r'_M','',mapping_name[::1]) #remove _M from the end of mapping name
-                
-                                        #count how many times name1 occurs in atomsH i.e. how many H are bound to it
-#                                        numberH = sum(1 for atomH in atomsH if name1 == re.sub(r'H[1-4]_M','',atomH[::1]))
-                                        #for atom in boundToH:
-                
-#                                        number_e = self.getElectrons(mapping_name)
-                
-#                                        e_atom_i = number_e + numberH 
-                                      #  print(name1 + " " + str(numberH))
-#                                        electrons.append(e_atom_i)
-                                      
-#                        else:            
-#                            if residue == molecule:
-#                                for atom in self.u.residues[i].atoms.names:
-#                                    index_list = [atom in pairs for pairs in residue_atoms]
-#                                    atom_i1 = index_list.index(True)
-#                                    mapping_name = residue_atoms[atom_i1][0]
-#                                    if mapping_name in atomsH:
-#                                        continue
-#                                    else:    
-#                                        name1 = re.sub(r'_M','',mapping_name[::1]) #remove _M from the end of mapping name
-#                
-#                                        #count how many times name1 occurs in atomsH i.e. how many H are bound to it
-#                                        numberH = sum(1 for atomH in atomsH if name1 == re.sub(r'H[1-4]_M','',atomH[::1]))
-#                                        #for atom in boundToH:
-                
-#                                        number_e = self.getElectrons(mapping_name)
-#                
-#                                        e_atom_i = number_e + numberH 
-                                     #   print(name1 + " " + str(numberH))
-#                                        electrons.append(e_atom_i)
-#                    print(electrons)
-#                    print("length " + str(len(electrons)))                    
-#                    weights.extend(electrons)
-                    
-#                else:
-#                    print(molecule)
-                    
-#                    if molecule == "SOL":
-#                        cSOL += 1
-#                    if molecule == "NA":
-#                        cNA += 1
-#                    weights.extend(self.residueElectronsAll(molecule))
                     
         else:   #ALL ATOM SIMULATIONS
-            for molecule in self.system_mapping.keys():
+            for molecule in self.readme['COMPOSITION'].keys():
                 weights.extend(self.residueElectronsAll(molecule))
                     
            # how to do lipids split into three residues??    MAYBE WORKS 
@@ -410,7 +333,7 @@ class FormFactor:
             #weights to calculate the electron density
             self.wght= self.assignElectrons() # function that maps the electrons to atoms
             print("lenght of wght: " + str(len(self.wght)))
-           # print(self.wght)
+            #print(self.wght)
             print("atoms in system: " + str(len(self.u.atoms.names)))
            
         if self.density_type=="number":
