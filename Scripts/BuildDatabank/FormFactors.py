@@ -20,7 +20,7 @@ from databankLibrary import download_link, lipids_dict, databank
 import form_factor
 
 
-path = '../../Data/Simulations/102/dfa/102dfa390326acd775347b1d703ccfa85e033cd8/1ad80d5d253e861f01d8f16e0d1590c6ef962916/'
+path = '../../Data/Simulations/137/dd2/137dd23bf6457ff74ed7684e346051d368898a35/2cc4e060bef9abe28600c2098a339638620a65d0/'
 
 db_data = databank(path)
 systems = db_data.get_systems()
@@ -35,11 +35,11 @@ for system in systems:
 
     print('Analyzing', system_path)
 
-    try:
-        if system['UNITEDATOM_DICT']:
-            continue
-    except:
-        pass
+  #  try:
+  #      if system['UNITEDATOM_DICT']:
+  #          continue
+  #  except:
+  #      pass
     
     output_name = ""
     
@@ -123,7 +123,7 @@ for system in systems:
         with open("system_already_run_17_11_21.out","a") as f:
             f.write(system_path+" download successfull \n")   
         if (not os.path.isfile(system_path + "/FormFactor.json")):
-            try:
-                form_factor.FormFactor(system_path, tpr_name, trj_name, 200, output_name,  system)
-            except:
-                print(system_path,' Failed')
+       #     try:
+            form_factor.FormFactor(system_path, tpr_name, trj_name, 200, output_name,  system)
+            #except:
+            #    print(system_path,' Failed')
