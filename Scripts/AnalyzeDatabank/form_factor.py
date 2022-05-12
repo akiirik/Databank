@@ -125,7 +125,7 @@ def listNamePairs(mapping_dict,molecule):
         except KeyError:
             continue
             
-    print(residues)
+   # print(residues)
     
     if residues:
         pairs_dictionary = dict.fromkeys(residues)
@@ -229,6 +229,7 @@ class FormFactor:
         print(molecule)
         "return list of electrons"
         electrons = []
+        #get the name of molecule used in simulation files
         molname = self.readme['COMPOSITION'][molecule]['NAME']
       
         pairs_residue = listNamePairs(self.system_mapping[molname], molname)
@@ -242,6 +243,9 @@ class FormFactor:
                 #find generic mapping name matching to forcefield atom name
                 index_list = [atom in pairs for pairs in pairs_residue[res]] #find mapping name
                 atom_i1 = index_list.index(True)
+                print("atom_i1")
+                print(atom_i1)
+  
                 mapping_name = pairs_residue[res][atom_i1][0] 
                 e_atom_i = self.getElectrons(mapping_name) #get number of electrons in an atom i of residue
                 #print(mapping_name + " " + str(e_atom_i))
@@ -297,21 +301,18 @@ class FormFactor:
                     weights.extend(electrons)
                     l_weights.extend(electrons)
                 else:
-                    molecule2 = self.readme['COMPOSITION'][molecule1]['NAME']
-                    w = self.residueElectronsAll(molecule2)
+                    w = self.residueElectronsAll(molecule1)
                     weights.extend(w)    
                     if molecule1 == 'SOL':
                         w_weights.extend(w)
                     
         else:   #ALL ATOM SIMULATIONS
-            for molecule1 in self.readme['COMPOSITION'].keys():
-                #get the name of molecule used in simulation files
-                molecule2 = self.readme['COMPOSITION'][molecule1]['NAME']
-                w = self.residueElectronsAll(molecule2)
+            for molecule in self.readme['COMPOSITION'].keys():
+                w = self.residueElectronsAll(molecule)
                 weights.extend(w)
-                if molecule1 in lipids_dict:
+                if molecule in lipids_dict:
                     l_weights.extend(w)
-                elif molecule1 == 'SOL':
+                elif molecule == 'SOL':
                     w_weights.extend(w)
                 
                     
@@ -349,7 +350,7 @@ class FormFactor:
             print("atoms in system: " + str(len(self.u.atoms.names)))
             
            # print(self.lipid_wght)
-            print(self.water_wght)
+            #print(self.water_wght)
             
            
         if self.density_type=="number":
@@ -366,8 +367,8 @@ class FormFactor:
             cwaters = self.u.select_atoms(self.waters)
             self.lipid_wght=np.ones(cwaters.atoms.names.shape[0])           
         
-        print(self.lipids)
-        print(self.u.atoms.resnames)
+        #print(self.lipids)
+        #print(self.u.atoms.resnames)
             
         print("Creating the electron mapping dictonary takes {:10.6f} s".format(time.time()-start_time))
         
