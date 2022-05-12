@@ -196,7 +196,6 @@ class FormFactor:
         self.system_mapping = self.temporary_mapping_dictionary()
         
         self.calculate_weight()
-        
 
         self.calculate_density()
         
@@ -263,6 +262,8 @@ class FormFactor:
             UA = True
         
         weights=[]
+        l_weights = [] #separate list for lipid electrons
+        w_weights = [] #separate list for water electrons
         
         if UA:  #UNITED ATOM SIMULATIONS
             for molecule1 in self.readme['COMPOSITION'].keys():
@@ -292,16 +293,27 @@ class FormFactor:
                             #print(name1 + " " + str(numberH))
                             electrons.append(e_atom_i)
                             
-                    # extract explicit atoms and get the mapping names
+                    
                     weights.extend(electrons)
+                    l_weights.extend(electrons)
                 else:
                     molecule2 = self.readme['COMPOSITION'][molecule1]['NAME']
-                    weights.extend(self.residueElectronsAll(molecule2))    
-                    
+                    w = self.residueElectronsAll(molecule2)
+                    weights.extend(w)    
+                    if molecule1 == 'SOL':
+                        w_weights.extend(w)
                     
         else:   #ALL ATOM SIMULATIONS
-            for molecule in self.readme['COMPOSITION'].keys():
-                weights.extend(self.residueElectronsAll(molecule))
+            for molecule1 in self.readme['COMPOSITION'].keys():
+                #get the name of molecule used in simulation files
+                molecule2 = self.readme['COMPOSITION'][molecule1]['NAME']
+                w = self.residueElectronsAll(molecule2)
+                weights.extend(w)
+                if molecule1 in lipids_dict:
+                    l_weights.extend(w)
+                elif molecule1 == 'SOL':
+                    w_weights.extend(w)
+                
                     
            # how to do lipids split into three residues??    MAYBE WORKS 
               
@@ -309,7 +321,7 @@ class FormFactor:
       #  print("number of SOL: " + str(cSOL))
       #  print("number of NA: " + str(cNA))
              
-        return weights
+        return weights, l_weights, w_weights
         
               
     def calculate_weight(self):
@@ -331,15 +343,28 @@ class FormFactor:
         start_time=time.time()
         if self.density_type=="electron":
             #weights to calculate the electron density
-            self.wght= self.assignElectrons() # function that maps the electrons to atoms
+            self.wght, self.lipid_wght, self.water_wght = self.assignElectrons() # function that maps the electrons to atoms
             print("lenght of wght: " + str(len(self.wght)))
             #print(self.wght)
             print("atoms in system: " + str(len(self.u.atoms.names)))
+            
+           # print(self.lipid_wght)
+            print(self.water_wght)
+            
            
         if self.density_type=="number":
             self.wght=np.ones(self.u.atoms.names.shape[0])
+            clipids = self.u.select_atoms(self.lipids)
+            self.lipid_wght=np.ones(clipids.atoms.names.shape[0])
+            cwaters = self.u.select_atoms(self.waters)
+            self.lipid_wght=np.ones(cwaters.atoms.names.shape[0])
+            
         if self.density_type=="mass":
-            self.wght=self.u.atoms.masses           
+            self.wght=self.u.atoms.masses
+            clipids = self.u.select_atoms(self.lipids)
+            self.lipid_wght=np.ones(clipids.atoms.names.shape[0])
+            cwaters = self.u.select_atoms(self.waters)
+            self.lipid_wght=np.ones(cwaters.atoms.names.shape[0])           
         
         print(self.lipids)
         print(self.u.atoms.resnames)
@@ -396,7 +421,7 @@ class FormFactor:
 
             
             crds_no_center = c.atoms.positions[:,2]/10
-            lipid_wght=np.ones(c.atoms.names.shape[0])
+          #  lipid_wght=np.ones(c.atoms.names.shape[0])
             
             #calculates the center of mass of the selected atoms that the density should be centered around and 
             #takes the z-coordinate value
@@ -431,7 +456,7 @@ class FormFactor:
 
 
 
-            water_wght=np.ones(cwaters.atoms.names.shape[0])
+         #   water_wght=np.ones(cwaters.atoms.names.shape[0])
             
             """calculates the volume of the bin; d- the "height" of a bin; assumes in [nm] """
             # ts.dimension[0], ts.dimension[1] - the x and y dimension; in [A] --> devides by 100
@@ -465,9 +490,9 @@ class FormFactor:
 
             """calculates the total density profile; keep for now"""
             density_z_centered += np.histogram(crds,bins=self.nbin,range=(-boxH/2,boxH/2),weights=self.wght/vbin)[0]
-            density_z_no_center += np.histogram(crds_no_center,bins=self.nbin,range=(0,boxH),weights=lipid_wght/vbin)[0]
-            density_lipids_center += np.histogram(clipids_center,bins=self.nbin,range=(-boxH/2,boxH/2),weights=lipid_wght/vbin)[0]
-            density_waters_center += np.histogram(cwaters_center,bins=self.nbin,range=(-boxH/2,boxH/2),weights=water_wght/vbin)[0]
+            density_z_no_center += np.histogram(crds_no_center,bins=self.nbin,range=(0,boxH),weights=self.lipid_wght/vbin)[0]
+            density_lipids_center += np.histogram(clipids_center,bins=self.nbin,range=(-boxH/2,boxH/2),weights=self.lipid_wght/vbin)[0] # ELECTRON WEIGHTS 
+            density_waters_center += np.histogram(cwaters_center,bins=self.nbin,range=(-boxH/2,boxH/2),weights=self.water_wght/vbin)[0] # ELECTRON WEIGHTS
 
         print("Calculating the density takes {:10.6f} s".format(time.time()-start_time))
 
