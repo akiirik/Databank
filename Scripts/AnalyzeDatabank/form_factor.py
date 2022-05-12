@@ -234,17 +234,28 @@ class FormFactor:
       
         pairs_residue = listNamePairs(self.system_mapping[molname], molname)
         
-        print(pairs_residue.keys())
+     #   print(pairs_residue)
+        
+        # if lipid is split to multiple residues
+        selection_txt = ""
+        
+        try:
+            selection_txt = "moltype " + self.readme['COMPOSITION'][molecule]['MOLTYPE'] + " and "
+        except KeyError:
+            pass
+            
         
         for res in pairs_residue.keys(): #KORJAA TOI res tossa explicit_atoms
-          #  print(res)
-            explicit_atoms = list(self.u.select_atoms("resname " + res).atoms.names) #explicit atoms of the residue
+          #  print(res)                           #   when lipids are split into more than one residue in topology with same residue names e.g. PGR,PA,OL and PE, PA,OL
+                                                  #    u.select_atoms("resname " + res) does not distinguish which PA or PL belongs to POPG or POPE
+            selection_txt = selection_txt + "resname " + res
+            explicit_atoms = list(self.u.select_atoms(selection_txt).atoms.names) #explicit atoms of the residue
             for atom in explicit_atoms:
                 #find generic mapping name matching to forcefield atom name
                 index_list = [atom in pairs for pairs in pairs_residue[res]] #find mapping name
                 atom_i1 = index_list.index(True)
-              #  print("atom_i1")
-              #  print(atom_i1)
+                #print("atom_i1")
+                #print(atom_i1)
   
                 mapping_name = pairs_residue[res][atom_i1][0] 
                 e_atom_i = self.getElectrons(mapping_name) #get number of electrons in an atom i of residue
@@ -279,6 +290,13 @@ class FormFactor:
                     
                     pairs_residue = listNamePairs(self.system_mapping[molecule2], molecule2)
                     atomsH = filterHbonds(self.system_mapping[molecule2].keys()) #list of hydrogen atoms
+                    
+                    selection_txt = ""
+        
+                    try:
+                        selection_txt = "moltype " + self.readme['COMPOSITION'][molecule]['MOLTYPE'] + " and "
+                    except KeyError:
+                        pass
                     
                     # extract explicit atoms and get the mapping names
                     for res in pairs_residue.keys():
@@ -348,6 +366,10 @@ class FormFactor:
             print("lenght of wght: " + str(len(self.wght)))
             #print(self.wght)
             print("atoms in system: " + str(len(self.u.atoms.names)))
+            
+            if len(self.wght) != len(self.u.atoms.names):
+                print("ERROR: Number of atoms mismatch")
+                print("ERROR: If lipids are split to many residues add moltype of lipids from tpr as 'MOLTYPE' to README.yaml under 'COMPOSITION'.")
             
            # print(self.lipid_wght)
             #print(self.water_wght)
